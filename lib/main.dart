@@ -1,50 +1,41 @@
 import 'package:flutter/material.dart';
-import 'game.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/router/app_router.dart';
 
-void main() {
-  runApp(const MainApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Cargar variables de entorno
+  await dotenv.load(fileName: '.env');
+
+  // Inicializar Supabase
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+    debug: true, // desactívalo en producción
+  );
+
+  runApp(
+    const ProviderScope(
+      child: LogiFlowApp(),
+    ),
+  );
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class LogiFlowApp extends StatelessWidget {
+  const LogiFlowApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Title('A', HitType.hit),
-        ),
+    return MaterialApp.router(
+      title: 'LogiFlow',
+      theme: ThemeData(
+        colorSchemeSeed: Colors.blue,
+        useMaterial3: true,
       ),
+      routerConfig: appRouter,
     );
-  }
-}
-
-class Title extends StatelessWidget {
-  const Title(this.letter, this.hitType, {super.key});
-  final String letter;
-  final HitType hitType;
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        color: switch (hitType) {
-          HitType.hit => Colors.green,
-          HitType.partial => Colors.yellow,
-          HitType.miss => Colors.green,
-          _ => Colors.white,
-      },
-      ),
-      child: Center(
-        child: Text(
-          letter .toUpperCase(),
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-      ),
-    );
-    
   }
 }
