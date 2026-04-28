@@ -131,10 +131,10 @@ supabase/
 
 - [x] Diseño de base de datos y modelo de datos
 - [x] Configuración de Supabase (Auth, RLS, Storage)
-- [ ] Módulo Auth y manejo de roles
-- [ ] CRUD camiones, conductores y contenedores
+- [x] Módulo Auth y manejo de roles
+- [x] CRUD camiones, conductores y contenedores
 - [ ] Registro y seguimiento de viajes
-- [ ] Dashboard con métricas en tiempo real
+- [x] Dashboard con métricas en tiempo real
 - [ ] Facturación con exportación PDF
 - [ ] Modo offline con sincronización
 - [ ] Build APK demo
