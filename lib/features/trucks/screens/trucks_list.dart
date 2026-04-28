@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:logistic_app/features/auth/providers/auth_provider.dart';
 import 'package:logistic_app/shared/widgets/bottom_navegation.dart';
 import '../models/trucks.dart';
 import '../providers/trucks_provider.dart';
+import '../../../core/providers/auth_provider.dart';
 
 class TruckListScreen extends ConsumerWidget {
   const TruckListScreen({super.key});
@@ -11,23 +13,21 @@ class TruckListScreen extends ConsumerWidget {
   @override
 Widget build(BuildContext context, WidgetRef ref) {
   final trucksAsync = ref.watch(trucksProvider);
+  final role        = ref.watch(userRoleProvider);  // ← agregar  
 
   return MainScaffold(
     title: 'Camiones',
-    actions: [
-      IconButton(
-        icon: const Icon(Icons.filter_list),
-        onPressed: () => _showFilterSheet(context),
-      ),
-    ],
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: () => context.push('/trucks/new'),
-      icon: const Icon(Icons.add),
-      label: const Text('Nuevo camión'),
-    ),
+    // FAB solo para admin y operador
+    floatingActionButton: role.canEdit
+        ? FloatingActionButton.extended(
+            onPressed: () => context.push('/trucks/new'),
+            icon: const Icon(Icons.add),
+            label: const Text('Nuevo camión'),
+          )
+        : null,
     child: trucksAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error:   (e, _) => Center(child: Text('Error: $e')),
       data: (trucks) => trucks.isEmpty
           ? const _EmptyState()
           : ListView.separated(
