@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../features/auth/models/user_profile.dart';
-import '../config/supabase_config.dart';
+import '../models/user_profile.dart';
+import '../../../core/config/supabase_config.dart';
 
 // Stream del usuario autenticado — se actualiza solo al login/logout
 final authStateProvider = StreamProvider<AuthState>((ref) {

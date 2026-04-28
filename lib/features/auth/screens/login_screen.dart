@@ -67,6 +67,7 @@ Future<void> _register() async {
       await supabase.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
+         emailRedirectTo: 'io.supabase.logiflow://login-callback',
         data: {
           'full_name': _nameController.text.trim(),
           'role': _selectedRole,

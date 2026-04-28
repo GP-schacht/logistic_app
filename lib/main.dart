@@ -14,7 +14,10 @@ Future<void> main() async {
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
-    debug: true, // desactívalo en producción
+    authOptions: FlutterAuthClientOptions(
+      authFlowType: AuthFlowType.pkce,   // ← más seguro, recomendado en mobile
+    ),
+  
   );
 
   runApp(
