@@ -75,7 +75,7 @@ Future<void> _register() async {
       );
 
       if (mounted) {
-        _showSuccess('Cuenta creada. Revisa tu correo para confirmarla.');
+        _showSuccess('Cuenta creada.');
         setState(() => _mode = AuthMode.login);
       }
     } on AuthException catch (e) {

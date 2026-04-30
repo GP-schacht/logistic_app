@@ -2,14 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/supabase_config.dart';
 import '../models/driver.dart';
 
-// Lista en tiempo real con join a profiles
+// ── 1. Lista en tiempo real ──────────────────────────────
 final driversProvider = StreamProvider<List<Driver>>((ref) {
   return supabase
       .from('drivers')
       .stream(primaryKey: ['id'])
       .order('created_at', ascending: false)
       .asyncMap((rows) async {
-        // Stream no soporta joins, hacemos el enrich manualmente
         final enriched = await Future.wait(rows.map((row) async {
           final profile = await supabase
               .from('profiles')
@@ -17,7 +16,15 @@ final driversProvider = StreamProvider<List<Driver>>((ref) {
               .eq('id', row['profile_id'])
               .maybeSingle();
 
-          // Ver si el conductor tiene un viaje activo hoy
+          Map<String, dynamic>? truck;
+          if (row['default_truck_id'] != null) {
+            truck = await supabase
+                .from('trucks')
+                .select('plate, brand, model, status')
+                .eq('id', row['default_truck_id'])
+                .maybeSingle();
+          }
+
           final activeTrip = await supabase
               .from('trips')
               .select('status')
@@ -28,9 +35,8 @@ final driversProvider = StreamProvider<List<Driver>>((ref) {
           return {
             ...row,
             'profiles': profile,
-            'status': activeTrip != null
-                ? activeTrip['status'] as String
-                : 'disponible',
+            'trucks':   truck,
+            'status':   activeTrip?['status'] ?? 'disponible',
           };
         }));
 
@@ -38,11 +44,11 @@ final driversProvider = StreamProvider<List<Driver>>((ref) {
       });
 });
 
-// Un conductor por id
+// ── 2. Un conductor por id ───────────────────────────────
 final driverByIdProvider = FutureProvider.family<Driver?, String>((ref, id) async {
   final row = await supabase
       .from('drivers')
-      .select('*, profiles(*)')
+      .select('*, profiles(*), trucks(plate, brand, model, status)')
       .eq('id', id)
       .maybeSingle();
 
@@ -61,6 +67,7 @@ final driverByIdProvider = FutureProvider.family<Driver?, String>((ref, id) asyn
   });
 });
 
+// ── 3. Repositorio ───────────────────────────────────────
 class DriversRepository {
   Future<void> create({
     required String fullName,
@@ -68,8 +75,8 @@ class DriversRepository {
     required String licenseNumber,
     required DateTime licenseExpiry,
     required String? emergencyContact,
+    String? defaultTruckId,
   }) async {
-    // 1. Crear perfil
     final profile = await supabase
         .from('profiles')
         .insert({
@@ -80,12 +87,12 @@ class DriversRepository {
         .select()
         .single();
 
-    // 2. Crear conductor vinculado al perfil
     await supabase.from('drivers').insert({
       'profile_id':        profile['id'],
       'license_number':    licenseNumber,
       'license_expiry':    licenseExpiry.toIso8601String().split('T').first,
       'emergency_contact': emergencyContact,
+      'default_truck_id':  defaultTruckId,
     });
   }
 
@@ -97,6 +104,7 @@ class DriversRepository {
     required String licenseNumber,
     required DateTime licenseExpiry,
     required String? emergencyContact,
+    required String? defaultTruckId,
   }) async {
     await Future.wait([
       supabase.from('profiles').update({
@@ -107,6 +115,7 @@ class DriversRepository {
         'license_number':    licenseNumber,
         'license_expiry':    licenseExpiry.toIso8601String().split('T').first,
         'emergency_contact': emergencyContact,
+        'default_truck_id':  defaultTruckId,
       }).eq('id', driverId),
     ]);
   }
@@ -116,4 +125,5 @@ class DriversRepository {
   }
 }
 
+// ── 4. Provider del repositorio ──────────────────────────
 final driversRepoProvider = Provider((_) => DriversRepository());

@@ -7,7 +7,9 @@ class Driver {
   final String licenseNumber;
   final DateTime licenseExpiry;
   final String? emergencyContact;
-  final String status; // derivado de trips activos
+  final String status;
+  final String? defaultTruckId;    // ← nuevo
+  final String? defaultTruckPlate; // ← nuevo (para mostrar en UI)
 
   const Driver({
     required this.id,
@@ -19,6 +21,8 @@ class Driver {
     required this.licenseExpiry,
     this.emergencyContact,
     this.status = 'disponible',
+    this.defaultTruckId,
+    this.defaultTruckPlate,
   });
 
   factory Driver.fromMap(Map<String, dynamic> m) => Driver(
@@ -31,25 +35,21 @@ class Driver {
     licenseExpiry:    DateTime.parse(m['license_expiry'] as String),
     emergencyContact: m['emergency_contact'] as String?,
     status:           m['status'] as String? ?? 'disponible',
+    defaultTruckId:   m['default_truck_id'] as String?,
+    defaultTruckPlate: m['trucks']?['plate'] as String?, // join
   );
 
-  // Licencia vence en menos de 30 días
+  bool get hasDefaultTruck => defaultTruckId != null;
   bool get isLicenseExpiringSoon =>
       licenseExpiry.difference(DateTime.now()).inDays <= 30;
-
   bool get isLicenseExpired =>
       licenseExpiry.isBefore(DateTime.now());
-
-  Map<String, dynamic> profileMap() => {
-    'full_name': fullName,
-    'phone':     phone,
-    'role':      'chofer',
-  };
 
   Map<String, dynamic> driverMap() => {
     'profile_id':        profileId,
     'license_number':    licenseNumber,
     'license_expiry':    licenseExpiry.toIso8601String().split('T').first,
     'emergency_contact': emergencyContact,
+    'default_truck_id':  defaultTruckId,
   };
 }
