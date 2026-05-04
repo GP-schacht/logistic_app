@@ -47,20 +47,21 @@ class _DriverFormScreenState extends ConsumerState<DriverFormScreen> {
   }
 
   // ── Carga camiones disponibles ───────────────────────────
-  Future<void> _loadTrucks() async {
-    setState(() => _loadingTrucks = true);
-    try {
-      final rows = await supabase
-          .from('trucks')
-          .select('id, plate, brand, model, status')
-          .order('plate');
-      setState(() => _trucks = List<Map<String, dynamic>>.from(rows));
-    } catch (e) {
-      _showError('Error cargando camiones: $e');
-    } finally {
-      if (mounted) setState(() => _loadingTrucks = false);
-    }
+Future<void> _loadTrucks() async {
+  setState(() => _loadingTrucks = true);
+  try {
+    final rows = await supabase
+        .from('trucks')
+        .select('id, plate, brand, model, status')
+        .order('plate');
+    setState(() => _trucks = List<Map<String, dynamic>>.from(rows));
+  } catch (e) {
+    debugPrint('Error cargando camiones: $e'); // ← ver en consola
+    _showError('Error cargando camiones: $e');
+  } finally {
+    if (mounted) setState(() => _loadingTrucks = false);
   }
+}
 
   // ── Carga datos del conductor al editar ──────────────────
   Future<void> _loadDriver() async {
@@ -114,49 +115,35 @@ class _DriverFormScreenState extends ConsumerState<DriverFormScreen> {
   }
 
   // ── Guardar ──────────────────────────────────────────────
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_licenseExpiry == null) {
-      _showError('Selecciona la fecha de vencimiento de la licencia');
-      return;
-    }
-    setState(() => _loading = true);
-
-    try {
-      final repo = ref.read(driversRepoProvider);
-
-      if (_isEditing) {
-        await repo.update(
-          driverId:        widget.driverId!,
-          profileId:       _profileId!,
-          fullName:        _nameCtrl.text.trim(),
-          phone:           _phoneCtrl.text.trim().isEmpty
-                               ? null : _phoneCtrl.text.trim(),
-          licenseNumber:   _licenseCtrl.text.trim().toUpperCase(),
-          licenseExpiry:   _licenseExpiry!,
-          emergencyContact: _emergencyCtrl.text.trim().isEmpty
-                               ? null : _emergencyCtrl.text.trim(),
-          defaultTruckId:  _defaultTruckId,
-        );
-      } else {
-        await repo.create(
-          fullName:        _nameCtrl.text.trim(),
-          phone:           _phoneCtrl.text.trim().isEmpty
-                               ? null : _phoneCtrl.text.trim(),
-          licenseNumber:   _licenseCtrl.text.trim().toUpperCase(),
-          licenseExpiry:   _licenseExpiry!,
-          emergencyContact: _emergencyCtrl.text.trim().isEmpty
-                               ? null : _emergencyCtrl.text.trim(),
-          defaultTruckId:  _defaultTruckId,
-        );
-      }
-      if (mounted) context.pop();
-    } catch (e) {
-      _showError('Error al guardar: $e');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+ Future<void> _save() async {
+  if (!_formKey.currentState!.validate()) return;
+  if (_licenseExpiry == null) {
+    _showError('Selecciona la fecha de vencimiento');
+    return;
   }
+  setState(() => _loading = true);
+
+  try {
+    // Solo update — create ya no aplica aquí
+    await ref.read(driversRepoProvider).update(
+      driverId:         widget.driverId!,
+      profileId:        _profileId!,
+      fullName:         _nameCtrl.text.trim(),
+      phone:            _phoneCtrl.text.trim().isEmpty
+                            ? null : _phoneCtrl.text.trim(),
+      licenseNumber:    _licenseCtrl.text.trim().toUpperCase(),
+      licenseExpiry:    _licenseExpiry!,
+      emergencyContact: _emergencyCtrl.text.trim().isEmpty
+                            ? null : _emergencyCtrl.text.trim(),
+      defaultTruckId:   _defaultTruckId,
+    );
+    if (mounted) context.pop();
+  } catch (e) {
+    _showError('Error al guardar: $e');
+  } finally {
+    if (mounted) setState(() => _loading = false);
+  }
+}
 
   // ── Helpers ──────────────────────────────────────────────
   void _showError(String msg) {
@@ -177,7 +164,7 @@ class _DriverFormScreenState extends ConsumerState<DriverFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Editar conductor' : 'Nuevo conductor'),
+         title: const Text('Editar conductor'),
       ),
       body: Form(
         key: _formKey,

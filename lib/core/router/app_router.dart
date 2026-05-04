@@ -4,10 +4,13 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/trips/screens/trips_screen.dart';
 import '../../features/drivers/screens/drivers_screen.dart';
+import '../../features/drivers/screens/drivers_detail.dart';
+import '../../features/drivers/screens/drivers_form.dart';
 import '../../features/trucks/screens/trucks_list.dart';
 import '../../features/trucks/screens/trucks_detail.dart';
 import '../../features/trucks/screens/trucks_form.dart';
 import '../../features/invoices/screens/invoices_screen.dart';
+import '../../features/drivers/screens/driver_assign_screen.dart';
 import '../config/supabase_config.dart';
 
 final appRouter = GoRouter(
@@ -16,7 +19,7 @@ final appRouter = GoRouter(
     supabase.auth.onAuthStateChange,
   ),
   redirect: (context, state) {
-    final session = supabase.auth.currentSession;
+    final session      = supabase.auth.currentSession;
     final isLoginRoute = state.matchedLocation == '/login';
 
     if (session == null && !isLoginRoute) return '/login';
@@ -24,50 +27,93 @@ final appRouter = GoRouter(
     return null;
   },
   routes: [
+
+    // ── Auth ──────────────────────────────────────────────
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
     ),
+
+    // ── Dashboard ─────────────────────────────────────────
     GoRoute(
       path: '/dashboard',
       builder: (context, state) => const DashboardScreen(),
     ),
-    GoRoute(
-      path: '/trips',
-      builder: (context, state) => const TripsScreen(),
-    ),
-    GoRoute(
-      path: '/drivers',
-      builder: (context, state) => const DriversScreen(),
-    ),
-    GoRoute(
-      path: '/invoices',
-      builder: (context, state) => const InvoicesScreen(),
-    ),
+
+    // ── Camiones ──────────────────────────────────────────
     GoRoute(
       path: '/trucks',
-      builder: (context, state) => const TruckListScreen(), // ← context y state únicos
+      builder: (context, state) => const TruckListScreen(),
       routes: [
         GoRoute(
           path: 'new',
-          builder: (context, state) => const TruckFormScreen(), // ← ídem
+          builder: (context, state) => const TruckFormScreen(),
         ),
         GoRoute(
-          path: ':id',
+          path: ':truckId',
           builder: (context, state) => TruckDetailScreen(
-            truckId: state.pathParameters['id']!,
+            truckId: state.pathParameters['truckId']!,
           ),
           routes: [
             GoRoute(
               path: 'edit',
               builder: (context, state) => TruckFormScreen(
-                truckId: state.pathParameters['id'],
+                truckId: state.pathParameters['truckId'],
               ),
             ),
           ],
         ),
       ],
     ),
+
+    // ── Conductores ───────────────────────────────────────
+  GoRoute(
+  path: '/drivers',
+  builder: (context, state) => const DriversScreen(),
+  routes: [
+    // Nueva ruta de asignación
+    GoRoute(
+      path: 'assign',
+      builder: (context, state) {
+        final extra = state.extra;
+        final profile = extra is Map<String, dynamic>
+            ? extra
+            : (extra is Map ? Map<String, dynamic>.from(extra) : null);
+
+        if (profile == null) return const DriversScreen();
+
+        return DriverAssignScreen(profile: profile);
+      },
+    ),
+    GoRoute(
+      path: ':driverId',
+      builder: (context, state) => DriverDetailScreen(
+        driverId: state.pathParameters['driverId']!,
+      ),
+      routes: [
+        GoRoute(
+          path: 'edit',
+          builder: (context, state) => DriverFormScreen(
+            driverId: state.pathParameters['driverId'],
+          ),
+        ),
+      ],
+    ),
+  ],
+),
+
+    // ── Viajes ────────────────────────────────────────────
+    GoRoute(
+      path: '/trips',
+      builder: (context, state) => const TripsScreen(),
+    ),
+
+    // ── Facturas ──────────────────────────────────────────
+    GoRoute(
+      path: '/invoices',
+      builder: (context, state) => const InvoicesScreen(),
+    ),
+
   ],
 );
 

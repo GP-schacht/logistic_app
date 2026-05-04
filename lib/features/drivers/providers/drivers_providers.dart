@@ -69,32 +69,21 @@ final driverByIdProvider = FutureProvider.family<Driver?, String>((ref, id) asyn
 
 // ── 3. Repositorio ───────────────────────────────────────
 class DriversRepository {
-  Future<void> create({
-    required String fullName,
-    required String? phone,
-    required String licenseNumber,
-    required DateTime licenseExpiry,
-    required String? emergencyContact,
-    String? defaultTruckId,
-  }) async {
-    final profile = await supabase
-        .from('profiles')
-        .insert({
-          'full_name': fullName,
-          'phone':     phone,
-          'role':      'chofer',
-        })
-        .select()
-        .single();
-
-    await supabase.from('drivers').insert({
-      'profile_id':        profile['id'],
-      'license_number':    licenseNumber,
-      'license_expiry':    licenseExpiry.toIso8601String().split('T').first,
-      'emergency_contact': emergencyContact,
-      'default_truck_id':  defaultTruckId,
-    });
-  }
+Future<void> create({
+  required String profileId,      // ← recibe el id directamente
+  required String licenseNumber,
+  required DateTime licenseExpiry,
+  required String? emergencyContact,
+  String? defaultTruckId,
+}) async {
+  await supabase.from('drivers').insert({
+    'profile_id':        profileId,
+    'license_number':    licenseNumber,
+    'license_expiry':    licenseExpiry.toIso8601String().split('T').first,
+    'emergency_contact': emergencyContact,
+    'default_truck_id':  defaultTruckId,
+  });
+}
 
   Future<void> update({
     required String driverId,
@@ -127,3 +116,27 @@ class DriversRepository {
 
 // ── 4. Provider del repositorio ──────────────────────────
 final driversRepoProvider = Provider((_) => DriversRepository());
+
+// Choferes registrados pero sin fila en drivers (pendientes de asignar)
+final unassignedProfilesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  // Traer todos los profiles con role=chofer
+  final profiles = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('role', 'chofer');
+
+  // Traer los profile_id que ya tienen fila en drivers
+  final assigned = await supabase
+      .from('drivers')
+      .select('profile_id');
+
+  final assignedIds = assigned
+      .map((r) => r['profile_id'] as String)
+      .toSet();
+
+  // Filtrar los que NO están asignados
+  return (profiles as List)
+      .where((p) => !assignedIds.contains(p['id']))
+      .toList() 
+      .cast<Map<String, dynamic>>();
+});

@@ -3,434 +3,345 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/driver.dart';
 import '../providers/drivers_providers.dart';
+import '../../../shared/widgets/bottom_navegation.dart';
 import '../../../core/providers/auth_provider.dart';
 
-class DriverDetailScreen extends ConsumerWidget {
-  const DriverDetailScreen({super.key, required this.driverId});
-  final String driverId;
+class DriversScreen extends ConsumerWidget {
+  const DriversScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final driverAsync = ref.watch(driverByIdProvider(driverId));
-    final role        = ref.watch(userRoleProvider);
+    final driversAsync    = ref.watch(driversProvider);
+    final pendingAsync    = ref.watch(unassignedProfilesProvider);
+    final role            = ref.watch(userRoleProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Detalle conductor'),
-        actions: [
-          if (role.canEdit)
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              onPressed: () => context.push('/drivers/$driverId/edit'),
-            ),
-          if (role.canDelete)
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-              onPressed: () => _confirmDelete(context, ref),
-            ),
-        ],
-      ),
-      body: driverAsync.when(
+    return MainScaffold(
+      title: 'Conductores',
+      // FAB solo si hay pendientes y el usuario puede editar
+      floatingActionButton: role.canEdit
+          ? FloatingActionButton.extended(
+              onPressed: () => _showPendingSheet(context, ref),
+              icon: const Icon(Icons.person_add_outlined),
+              label: const Text('Asignar conductor'),
+            )
+          : null,
+      child: driversAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error:   (e, _) => _ErrorState(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(driverByIdProvider(driverId)),
-        ),
-        data: (driver) => driver == null
-            ? const _NotFound()
-            : _DriverDetailBody(driver: driver),
-      ),
-    );
-  }
+        error:   (e, _) => Center(child: Text('Error: $e')),
+        data: (drivers) => CustomScrollView(
+          slivers: [
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Eliminar conductor'),
-        content: const Text(
-            'Se eliminará el conductor y su perfil. Esta acción no se puede deshacer.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && context.mounted) {
-      await ref.read(driversRepoProvider).delete(driverId);
-      context.go('/drivers');
-    }
-  }
-}
-
-// ── Body principal ───────────────────────────────────────
-
-class _DriverDetailBody extends StatelessWidget {
-  const _DriverDetailBody({required this.driver});
-  final Driver driver;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _HeaderCard(driver: driver),
-        const SizedBox(height: 12),
-        _LicenseAlert(driver: driver),
-        _InfoCard(driver: driver),
-        const SizedBox(height: 12),
-        _TruckCard(driver: driver),
-      ],
-    );
-  }
-}
-
-// ── Header con avatar y estado ───────────────────────────
-
-class _HeaderCard extends StatelessWidget {
-  const _HeaderCard({required this.driver});
-  final Driver driver;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(children: [
-          // Avatar
-          Stack(children: [
-            CircleAvatar(
-              radius: 36,
-              backgroundImage: driver.photoUrl != null
-                  ? NetworkImage(driver.photoUrl!) : null,
-              backgroundColor: Colors.blue.shade100,
-              child: driver.photoUrl == null
-                  ? Text(
-                      driver.fullName.isNotEmpty
-                          ? driver.fullName[0].toUpperCase() : '?',
-                      style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade700),
-                    )
-                  : null,
+            // ── Sección: Por asignar ──────────────────────
+            pendingAsync.when(
+              loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+              error:   (e, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+              data: (pending) {
+                if (pending.isEmpty || !role.canEdit) {
+                  return const SliverToBoxAdapter(child: SizedBox.shrink());
+                }
+                return SliverToBoxAdapter(
+                  child: _PendingSection(
+                    pending: pending,
+                    onTap: (profile) => _openAssignForm(context, profile),
+                  ),
+                );
+              },
             ),
-            Positioned(
-              right: 0, bottom: 0,
-              child: Container(
-                width: 16, height: 16,
-                decoration: BoxDecoration(
-                  color: _statusColor(driver.status),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
+
+            // ── Sección: Flota activa ─────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text('Flota activa',
+                    style: Theme.of(context).textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade600)),
               ),
             ),
-          ]),
-          const SizedBox(width: 16),
 
-          // Nombre y estado
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(driver.fullName,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                _StatusBadge(status: driver.status),
-              ],
-            ),
-          ),
-        ]),
+            drivers.isEmpty
+                ? SliverFillRemaining(child: _EmptyState())
+                : SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    sliver: SliverList.separated(
+                      itemCount: drivers.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) => _DriverCard(
+                        driver: drivers[i],
+                        canEdit: role.canEdit,
+                      ),
+                    ),
+                  ),
+          ],
+        ),
       ),
     );
   }
 
-  Color _statusColor(String status) => switch (status) {
-    'en_curso'   => Colors.blue,
-    'programado' => Colors.orange,
-    _            => Colors.green,
-  };
-}
+  // Bottom sheet con lista de pendientes
+  void _showPendingSheet(BuildContext context, WidgetRef ref) {
+    final pending = ref.read(unassignedProfilesProvider).valueOrNull ?? [];
 
-// ── Alerta de licencia ───────────────────────────────────
-
-class _LicenseAlert extends StatelessWidget {
-  const _LicenseAlert({required this.driver});
-  final Driver driver;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!driver.isLicenseExpired && !driver.isLicenseExpiringSoon) {
-      return const SizedBox.shrink();
+    if (pending.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay choferes pendientes de asignar'),
+        ),
+      );
+      return;
     }
 
-    final color = driver.isLicenseExpired ? Colors.red : Colors.orange;
-    final msg   = driver.isLicenseExpired
-        ? 'Licencia vencida — requiere renovación inmediata'
-        : 'Licencia vence en menos de 30 días';
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _PendingBottomSheet(
+        pending: pending,
+        onSelect: (profile) {
+          Navigator.pop(context);
+          _openAssignForm(context, profile);
+        },
+      ),
+    );
+  }
 
+ void _openAssignForm(BuildContext context, Map<String, dynamic> profile) {
+  if (profile['id'] == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Error: perfil sin ID')),
+    );
+    return;
+  }
+  context.push('/drivers/assign', extra: profile);
+}
+}
+
+// ── Sección banner de pendientes ─────────────────────────
+
+class _PendingSection extends StatelessWidget {
+  const _PendingSection({required this.pending, required this.onTap});
+  final List<Map<String, dynamic>> pending;
+  final void Function(Map<String, dynamic>) onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.4)),
+        color: Colors.orange.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.withOpacity(0.3)),
       ),
-      child: Row(children: [
-        Icon(Icons.warning_amber_rounded, color: color, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(msg,
-              style: TextStyle(
-                  color: color, fontWeight: FontWeight.w500, fontSize: 13)),
-        ),
-      ]),
-    );
-  }
-}
-
-// ── Card de información personal ─────────────────────────
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.driver});
-  final Driver driver;
-
-  @override
-  Widget build(BuildContext context) {
-    final expiry    = driver.licenseExpiry;
-    final formatted = '${expiry.day.toString().padLeft(2, '0')}/'
-                      '${expiry.month.toString().padLeft(2, '0')}/'
-                      '${expiry.year}';
-    final licenseColor = driver.isLicenseExpired
-        ? Colors.red
-        : driver.isLicenseExpiringSoon
-            ? Colors.orange : null;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(children: [
-          _InfoRow(
-            icon:  Icons.credit_card_outlined,
-            label: 'Licencia',
-            value: driver.licenseNumber,
-            color: licenseColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(children: [
+              const Icon(Icons.pending_actions_outlined,
+                  color: Colors.orange, size: 18),
+              const SizedBox(width: 8),
+              Text('Por asignar (${pending.length})',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                      fontSize: 13)),
+            ]),
           ),
-          _Divider(),
-          _InfoRow(
-            icon:  Icons.calendar_today_outlined,
-            label: 'Vencimiento',
-            value: formatted,
-            color: licenseColor,
-          ),
-          _Divider(),
-          _InfoRow(
-            icon:  Icons.phone_outlined,
-            label: 'Teléfono',
-            value: driver.phone ?? '—',
-          ),
-          _Divider(),
-          _InfoRow(
-            icon:  Icons.emergency_outlined,
-            label: 'Emergencia',
-            value: driver.emergencyContact ?? '—',
-          ),
-        ]),
+          ...pending.take(3).map((p) => ListTile(
+            dense: true,
+            leading: CircleAvatar(
+              radius: 16,
+              backgroundColor: Colors.orange.withOpacity(0.15),
+              child: Text(
+                (p['full_name'] as String? ?? '?')[0].toUpperCase(),
+                style: const TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13),
+              ),
+            ),
+            title: Text(p['full_name'] as String? ?? 'Sin nombre',
+                style: const TextStyle(fontSize: 13)),
+            subtitle: Text(p['phone'] as String? ?? 'Sin teléfono',
+                style: const TextStyle(fontSize: 11)),
+            trailing: TextButton(
+              onPressed: () => onTap(p),
+              child: const Text('Asignar'),
+            ),
+          )),
+          if (pending.length > 3)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Text('+${pending.length - 3} más pendientes',
+                  style: TextStyle(
+                      fontSize: 12, color: Colors.orange.shade700)),
+            )
+          else
+            const SizedBox(height: 8),
+        ],
       ),
     );
   }
 }
 
-// ── Card de camión base ──────────────────────────────────
+// ── Bottom sheet completo de pendientes ──────────────────
 
-class _TruckCard extends StatelessWidget {
-  const _TruckCard({required this.driver});
-  final Driver driver;
+class _PendingBottomSheet extends StatelessWidget {
+  const _PendingBottomSheet(
+      {required this.pending, required this.onSelect});
+  final List<Map<String, dynamic>> pending;
+  final void Function(Map<String, dynamic>) onSelect;
 
   @override
   Widget build(BuildContext context) {
-    final hasTruck = driver.hasDefaultTruck;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(children: [
+    return DraggableScrollableSheet(
+      initialChildSize: 0.5,
+      minChildSize: 0.3,
+      maxChildSize: 0.85,
+      expand: false,
+      builder: (_, controller) => Column(
+        children: [
+          // Handle
           Container(
-            width: 44, height: 44,
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 40, height: 4,
             decoration: BoxDecoration(
-              color: hasTruck
-                  ? Colors.blue.withOpacity(0.1)
-                  : Colors.grey.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.local_shipping_outlined,
-              color: hasTruck ? Colors.blue : Colors.grey,
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(width: 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Row(children: [
+              const Icon(Icons.person_add_outlined, size: 20),
+              const SizedBox(width: 8),
+              Text('Seleccionar chofer',
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              const Spacer(),
+              Text('${pending.length} disponibles',
+                  style: TextStyle(
+                      fontSize: 12, color: Colors.grey.shade500)),
+            ]),
+          ),
+          const Divider(height: 1),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Camión base',
-                    style: TextStyle(
-                        fontSize: 12, color: Colors.grey.shade500)),
-                const SizedBox(height: 2),
-                Text(
-                  hasTruck
-                      ? driver.defaultTruckPlate ?? 'Asignado'
-                      : 'Sin camión base asignado',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    color: hasTruck ? null : Colors.grey,
+            child: ListView.separated(
+              controller: controller,
+              padding: const EdgeInsets.all(16),
+              itemCount: pending.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (_, i) {
+                final p = pending[i];
+                final name = p['full_name'] as String? ?? 'Sin nombre';
+                return Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.blue.shade100,
+                      child: Text(name[0].toUpperCase(),
+                          style: TextStyle(
+                              color: Colors.blue.shade700,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    title: Text(name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w500)),
+                    subtitle: Text(
+                        p['phone'] as String? ?? 'Sin teléfono',
+                        style: const TextStyle(fontSize: 12)),
+                    trailing: FilledButton.tonal(
+                      onPressed: () => onSelect(p),
+                      child: const Text('Asignar'),
+                    ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
-          // Badge de estado del camión si está en mantenimiento
-          if (hasTruck && driver.defaultTruckPlate != null)
-            _TruckStatusBadge(plate: driver.defaultTruckPlate!),
-        ]),
+        ],
       ),
     );
   }
 }
 
-class _TruckStatusBadge extends StatelessWidget {
-  const _TruckStatusBadge({required this.plate});
-  final String plate;
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(plate,
-          style: const TextStyle(
-              fontSize: 11,
-              color: Colors.blue,
-              fontWeight: FontWeight.w600)),
-    );
-  }
-}
-
-// ── Widgets auxiliares ───────────────────────────────────
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.color,
-  });
-  final IconData icon;
-  final String   label;
-  final String   value;
-  final Color?   color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(children: [
-        Icon(icon, size: 18, color: Colors.grey.shade400),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 11, color: Colors.grey.shade500)),
-              const SizedBox(height: 2),
-              Text(value,
-                  style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: color)),
-            ],
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.drive_eta_outlined, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          Text(
+            'No hay conductores activos',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
           ),
-        ),
-      ]),
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Divider(
-        height: 1, indent: 46, color: Colors.grey.withOpacity(0.15));
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
-      'en_curso'   => ('En ruta',    Colors.blue),
-      'programado' => ('Programado', Colors.orange),
-      _            => ('Disponible', Colors.green),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(12),
+        ],
       ),
-      child: Text(label,
-          style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w600)),
     );
   }
 }
 
-class _NotFound extends StatelessWidget {
-  const _NotFound();
-  @override
-  Widget build(BuildContext context) => const Center(
-    child: Text('Conductor no encontrado'),
-  );
-}
+class _DriverCard extends StatelessWidget {
+  const _DriverCard({required this.driver, required this.canEdit});
 
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
+  final Driver driver;
+  final bool canEdit;
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      const Icon(Icons.error_outline, size: 48, color: Colors.grey),
-      const SizedBox(height: 12),
-      Text(message,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey.shade600)),
-      const SizedBox(height: 16),
-      FilledButton.tonal(
-          onPressed: onRetry, child: const Text('Reintentar')),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        leading: CircleAvatar(
+          radius: 24,
+          backgroundColor: Colors.blue.shade50,
+          foregroundImage:
+              driver.photoUrl != null ? NetworkImage(driver.photoUrl!) : null,
+          child: driver.photoUrl == null
+              ? Text(
+                  driver.fullName.isNotEmpty
+                      ? driver.fullName[0].toUpperCase()
+                      : '?',
+                  style: TextStyle(
+                    color: Colors.blue.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : null,
+        ),
+        title: Text(driver.fullName,
+            style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (driver.phone != null) Text(driver.phone!),
+            const SizedBox(height: 4),
+            Text(
+              driver.hasDefaultTruck
+                  ? 'Camión: ${driver.defaultTruckPlate ?? 'Sin placa'}'
+                  : 'Sin camión asignado',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        trailing: canEdit
+            ? IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () {
+                  // Placeholder for edit action
+                },
+              )
+            : null,
+      ),
+    );
+  }
 }
