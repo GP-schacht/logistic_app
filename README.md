@@ -133,8 +133,10 @@ supabase/
 - [x] Configuración de Supabase (Auth, RLS, Storage)
 - [x] Módulo Auth y manejo de roles
 - [x] CRUD camiones, conductores y contenedores
-- [ ] Registro y seguimiento de viajes
+- [x] Registro y seguimiento de viajes
 - [x] Dashboard con métricas en tiempo real
+- [x] Navegación bottom bar con botón central (Dashboard)
+- [x] Navegación a pantallas de detalle y edición (drivers, trips)
 - [ ] Facturación con exportación PDF
 - [ ] Modo offline con sincronización
 - [ ] Build APK demo
