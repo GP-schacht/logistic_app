@@ -23,66 +23,63 @@ class MainScaffold extends ConsumerWidget {
     final role = ref.watch(userRoleProvider);
     final isChofer = role.isChofer;
 
-    // Rutas y destinos según rol
-    final routes = isChofer
-        ? ['/dashboard', '/trips', '/profile']
-        : ['/dashboard', '/trucks', '/drivers', '/trips'];
-
-    final destinations = isChofer
-        ? const [
-            NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined),
-              selectedIcon: Icon(Icons.dashboard),
-              label: 'Inicio',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.route_outlined),
-              selectedIcon: Icon(Icons.route),
-              label: 'Mis viajes',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Perfil',
-            ),
-          ]
-        : const [
-            NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined),
-              selectedIcon: Icon(Icons.dashboard),
-              label: 'Dashboard',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.local_shipping_outlined),
-              selectedIcon: Icon(Icons.local_shipping),
-              label: 'Camiones',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.badge_outlined),
-              selectedIcon: Icon(Icons.badge),
-              label: 'Conductores',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.route_outlined),
-              selectedIcon: Icon(Icons.route),
-              label: 'Viajes',
-            ),
-          ];
-
     int selectedIndex() {
       final location = GoRouterState.of(context).matchedLocation;
-      for (int i = 0; i < routes.length; i++) {
-        if (location.startsWith(routes[i])) return i;
-      }
-      return 0;
+      if (location.startsWith('/trips')) return 0;
+      if (location.startsWith('/containers')) return 1;
+      if (location.startsWith('/dashboard')) return 2;
+      if (location.startsWith('/drivers')) return 3;
+      if (location.startsWith('/trucks')) return 4;
+      return 2;
     }
+
+    void onDestinationSelected(int i) {
+      final routes = isChofer
+          ? ['/trips', '/containers', '/dashboard', '/drivers', '/trucks']
+          : ['/trips', '/containers', '/dashboard', '/drivers', '/trucks'];
+      context.go(routes[i]);
+    }
+
+    final navItems = [
+      _NavItem(
+        icon: Icons.route_outlined,
+        selectedIcon: Icons.route,
+        label: 'Viajes',
+        index: 0,
+      ),
+      _NavItem(
+        icon: Icons.inventory_2_outlined,
+        selectedIcon: Icons.inventory_2,
+        label: 'Contenedores',
+        index: 1,
+      ),
+      _NavItem(
+        icon: Icons.dashboard_outlined,
+        selectedIcon: Icons.dashboard,
+        label: 'Dashboard',
+        index: 2,
+      ),
+      _NavItem(
+        icon: Icons.badge_outlined,
+        selectedIcon: Icons.badge,
+        label: 'Conductores',
+        index: 3,
+      ),
+      _NavItem(
+        icon: Icons.local_shipping_outlined,
+        selectedIcon: Icons.local_shipping,
+        label: 'Camiones',
+        index: 4,
+      ),
+    ];
+
+    final current = selectedIndex();
 
     return Scaffold(
       appBar: AppBar(
         title: Text(title ?? 'LogiFlow'),
         actions: [
           ...?actions,
-          // Avatar con logout siempre visible
           PopupMenuButton<String>(
             icon: const Icon(Icons.account_circle_outlined),
             onSelected: (value) async {
@@ -115,13 +112,87 @@ class MainScaffold extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: floatingActionButton,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex(),
-        onDestinationSelected: (i) => context.go(routes[i]),
-        destinations: destinations,
+      floatingActionButton: SizedBox(
+        width: 64,
+        height: 64,
+        child: FloatingActionButton(
+          onPressed: () => onDestinationSelected(2),
+          backgroundColor: Theme.of(context).primaryColor,
+          elevation: 8,
+          child: Icon(
+            current == 2 ? Icons.dashboard : Icons.dashboard_outlined,
+            size: 28,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      floatingActionButtonLocation:
+          FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8,
+        padding: EdgeInsets.zero,
+        child: SafeArea(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(navItems[0], current, onDestinationSelected),
+              _buildNavItem(navItems[1], current, onDestinationSelected),
+              const SizedBox(width: 48),
+              _buildNavItem(navItems[3], current, onDestinationSelected),
+              _buildNavItem(navItems[4], current, onDestinationSelected),
+            ],
+          ),
+        ),
       ),
       body: child,
     );
   }
+
+  Widget _buildNavItem(
+    _NavItem item,
+    int currentIndex,
+    void Function(int) onTap,
+  ) {
+    final selected = currentIndex == item.index;
+    return Expanded(
+      child: InkWell(
+        onTap: () => onTap(item.index),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                selected ? item.selectedIcon : item.icon,
+                color: selected ? Colors.blue : Colors.grey,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                item.label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: selected ? Colors.blue : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final int index;
+
+  const _NavItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.index,
+  });
 }

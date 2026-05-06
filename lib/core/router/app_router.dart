@@ -15,7 +15,9 @@ import '../../features/trucks/screens/trucks_form.dart';
 import '../../features/invoices/screens/invoices_screen.dart';
 import '../../features/drivers/screens/driver_assign_screen.dart';
 import '../config/supabase_config.dart';
-
+import '../../features/containers/screens/containers_screen.dart';
+import '../../features/containers/screens/container_detail.dart';
+import '../../features/containers/screens/container_form.dart';
 final appRouter = GoRouter(
   initialLocation: '/login',
   refreshListenable: AppGoRouterRefreshStream(
@@ -116,7 +118,7 @@ final appRouter = GoRouter(
 
         ),
         GoRoute(
-          path: 'tripId',
+          path: ':tripId',
           builder:(context, state) => TripDetailScreen(
             tripId: state.pathParameters['tripId']!,
             ),
@@ -130,6 +132,31 @@ final appRouter = GoRouter(
       builder: (context, state) => const InvoicesScreen(),
     ),
 
+    // ── Containers ──────────────────────────────────────────
+GoRoute(
+  path: '/containers',
+  builder: (context, state) => const ContainersScreen(),
+  routes: [
+    GoRoute(
+      path: 'new',
+      builder: (context, state) => const ContainerFormScreen(),
+    ),
+    GoRoute(
+      path: ':containerId',
+      builder: (context, state) => ContainerDetailScreen(
+        containerId: state.pathParameters['containerId']!,
+      ),
+      routes: [
+        GoRoute(
+          path: 'edit',
+          builder: (context, state) => ContainerFormScreen(
+            containerId: state.pathParameters['containerId'],
+          ),
+        ),
+      ],
+    ),
+  ],
+),
   ],
 );
 

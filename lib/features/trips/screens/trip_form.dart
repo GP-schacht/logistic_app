@@ -92,7 +92,8 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
         createdAt:    DateTime.now(),
       );
       await ref.read(tripsRepoProvider).create(trip);
-      if (mounted) context.pop();
+     ref.invalidate(tripsProvider);
+    if (mounted) context.pop();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -193,43 +194,32 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Camión — pre-llenado del camión base
-            driversAsync.when(
-              loading: () => const LinearProgressIndicator(),
-              error:   (e, _) => Text('Error: $e'),
-              data: (drivers) {
-                // Todos los camiones disponibles
-                final allTrucks = drivers
-                    .where((d) => d['default_truck_id'] != null)
-                    .map((d) => {
-                          'id':    d['default_truck_id'],
-                          'plate': d['trucks']?['plate'] ?? '—',
-                        })
-                    .toList();
-
-                return DropdownButtonFormField<String>(
-                  value: _selectedTruckId,
-                  decoration: InputDecoration(
-                    labelText: 'Camión *',
-                    prefixIcon: const Icon(
-                        Icons.local_shipping_outlined),
-                    border: const OutlineInputBorder(),
-                    helperText: _selectedDriverId != null
-                        ? 'Pre-llenado con el camión base '
-                          'del conductor'
-                        : null,
-                  ),
-                  items: allTrucks.map((t) => DropdownMenuItem(
-                    value: t['id'] as String,
-                    child: Text(t['plate'] as String),
-                  )).toList(),
-                  onChanged: (v) =>
-                      setState(() => _selectedTruckId = v),
-                  validator: (v) =>
-                      v == null ? 'Selecciona un camión' : null,
-                );
-              },
-            ),
+           // ── Camión — cargado directo desde trucks ────────────
+ref.watch(availableTrucksProvider).when(
+  loading: () => const LinearProgressIndicator(),
+  error:   (e, _) => Text('Error cargando camiones: $e'),
+  data: (trucks) => DropdownButtonFormField<String>(
+    value: _selectedTruckId,
+    decoration: InputDecoration(
+      labelText: 'Camión *',
+      prefixIcon: const Icon(Icons.local_shipping_outlined),
+      border: const OutlineInputBorder(),
+      helperText: _selectedDriverId != null
+          ? 'Pre-llenado con el camión base del conductor'
+          : null,
+    ),
+    items: trucks.map((t) {
+      final label =
+          '${t['plate']} · ${t['brand'] ?? ''} ${t['model'] ?? ''}'.trim();
+      return DropdownMenuItem(
+        value: t['id'] as String,
+        child: Text(label),
+      );
+    }).toList(),
+    onChanged: (v) => setState(() => _selectedTruckId = v),
+    validator: (v) => v == null ? 'Selecciona un camión' : null,
+  ),
+),
             const SizedBox(height: 16),
 
             // Contenedor

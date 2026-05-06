@@ -101,7 +101,7 @@ final availableDriversProvider = FutureProvider<List<Map<String, dynamic>>>((ref
   final rows = busyIds.isEmpty
       ? await query.order('created_at')
       : await query
-          .not('id', 'in', '(${busyIds.join(',')})')
+          .not('id', 'in', busyIds )
           .order('created_at');
 
   return List<Map<String, dynamic>>.from(rows);
@@ -134,3 +134,12 @@ class TripsRepository {
 }
 
 final tripsRepoProvider = Provider((_) => TripsRepository());
+
+final availableTrucksProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final rows = await supabase
+      .from('trucks')
+      .select('id, plate, brand, model, status')
+      .inFilter('status', ['disponible'])
+      .order('plate');
+  return List<Map<String, dynamic>>.from(rows);
+});
