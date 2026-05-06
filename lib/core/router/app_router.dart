@@ -1,5 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart';
+import 'package:logistic_app/features/trips/screens/trip_detail.dart';
+import 'package:logistic_app/features/trips/screens/trip_form.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/trips/screens/trips_screen.dart';
@@ -106,6 +109,19 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/trips',
       builder: (context, state) => const TripsScreen(),
+      routes: [
+        GoRoute(
+          path:'new',
+          builder:(context,state) => const TripFormScreen(),
+
+        ),
+        GoRoute(
+          path: 'tripId',
+          builder:(context, state) => TripDetailScreen(
+            tripId: state.pathParameters['tripId']!,
+            ),
+          ),
+      ]
     ),
 
     // ── Facturas ──────────────────────────────────────────
