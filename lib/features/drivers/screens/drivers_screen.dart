@@ -300,6 +300,7 @@ class _DriverCard extends StatelessWidget {
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
+        onTap: () => context.push('/drivers/${driver.id}'),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         leading: CircleAvatar(
           radius: 24,
@@ -336,9 +337,7 @@ class _DriverCard extends StatelessWidget {
         trailing: canEdit
             ? IconButton(
                 icon: const Icon(Icons.edit_outlined),
-                onPressed: () {
-                  // Placeholder for edit action
-                },
+                onPressed: () => context.push('/drivers/${driver.id}/edit'),
               )
             : null,
       ),

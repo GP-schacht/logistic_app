@@ -34,9 +34,13 @@ class MainScaffold extends ConsumerWidget {
     }
 
     void onDestinationSelected(int i) {
-      final routes = isChofer
-          ? ['/trips', '/containers', '/dashboard', '/drivers', '/trucks']
-          : ['/trips', '/containers', '/dashboard', '/drivers', '/trucks'];
+      final routes = [
+        '/trips',
+        '/containers',
+        '/dashboard',
+        '/drivers',
+        '/trucks',
+      ];
       context.go(routes[i]);
     }
 
@@ -74,6 +78,7 @@ class MainScaffold extends ConsumerWidget {
     ];
 
     final current = selectedIndex();
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -103,8 +108,10 @@ class MainScaffold extends ConsumerWidget {
                 value: 'logout',
                 child: ListTile(
                   leading: Icon(Icons.logout, color: Colors.red),
-                  title: Text('Cerrar sesión',
-                      style: TextStyle(color: Colors.red)),
+                  title: Text(
+                    'Cerrar sesión',
+                    style: TextStyle(color: Colors.red),
+                  ),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -112,40 +119,61 @@ class MainScaffold extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: SizedBox(
-        width: 64,
-        height: 64,
-        child: FloatingActionButton(
-          onPressed: () => onDestinationSelected(2),
-          backgroundColor: Theme.of(context).primaryColor,
-          elevation: 8,
-          child: Icon(
-            current == 2 ? Icons.dashboard : Icons.dashboard_outlined,
-            size: 28,
-            color: Colors.white,
+      body: child,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomAppBar(
+          shape: const CircularNotchedRectangle(),
+          notchMargin: 8,
+          padding: EdgeInsets.zero,
+          child: SafeArea(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(navItems[0], current, onDestinationSelected),
+                _buildNavItem(navItems[1], current, onDestinationSelected),
+                const SizedBox(width: 48),
+                _buildNavItem(navItems[3], current, onDestinationSelected),
+                _buildNavItem(navItems[4], current, onDestinationSelected),
+              ],
+            ),
           ),
         ),
+      ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (floatingActionButton != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: floatingActionButton,
+            ),
+          SizedBox(
+            width: 64,
+            height: 64,
+            child: FloatingActionButton(
+              onPressed: () => onDestinationSelected(2),
+              backgroundColor: theme.primaryColor,
+              elevation: 8,
+              child: Icon(
+                current == 2 ? Icons.dashboard : Icons.dashboard_outlined,
+                size: 28,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButtonLocation:
           FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8,
-        padding: EdgeInsets.zero,
-        child: SafeArea(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(navItems[0], current, onDestinationSelected),
-              _buildNavItem(navItems[1], current, onDestinationSelected),
-              const SizedBox(width: 48),
-              _buildNavItem(navItems[3], current, onDestinationSelected),
-              _buildNavItem(navItems[4], current, onDestinationSelected),
-            ],
-          ),
-        ),
-      ),
-      body: child,
     );
   }
 

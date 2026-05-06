@@ -49,13 +49,14 @@ class _TripsScreenState extends ConsumerState<TripsScreen>
     return MainScaffold(
       title: 'Viajes',
       floatingActionButton: role.canEdit
-          ? FloatingActionButton.extended(
+          ? FloatingActionButton(
+              heroTag: 'new_trip',
               onPressed: () async {
                 await context.push('/trips/new');
                 ref.invalidate(tripsProvider);
               },
-              icon: const Icon(Icons.add),
-              label: const Text('Nuevo viaje'),
+              backgroundColor: Colors.green,
+              child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
       child: Column(
