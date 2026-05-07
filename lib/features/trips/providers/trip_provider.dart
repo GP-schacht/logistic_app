@@ -64,7 +64,7 @@ final tripByIdProvider = FutureProvider.family<Trip?, String>((ref, id) async {
         *,
         trucks(plate, brand, model),
         containers(container_number, type, weight_kg),
-        drivers(profiles(full_name, phone))
+        drivers(emergency_contact, profiles(full_name))
       ''')
       .eq('id', id)
       .maybeSingle();
