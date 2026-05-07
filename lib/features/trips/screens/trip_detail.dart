@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/foundation.dart';
 import '../models/trip.dart';
 import '../providers/trip_provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../invoices/providers/invoice_provider.dart';
 
 class TripDetailScreen extends ConsumerWidget {
   const TripDetailScreen({super.key, required this.tripId});
@@ -436,7 +438,7 @@ class _NotesCard extends StatelessWidget {
 
 // ── Botón de avance de estado ────────────────────────────
 
-class _StatusButton extends StatefulWidget {
+class _StatusButton extends ConsumerStatefulWidget {
   const _StatusButton({
     required this.trip,
     required this.onPressed,
@@ -445,10 +447,10 @@ class _StatusButton extends StatefulWidget {
   final Future<void> Function() onPressed;
 
   @override
-  State<_StatusButton> createState() => _StatusButtonState();
+  ConsumerState<_StatusButton> createState() => _StatusButtonState();
 }
 
-class _StatusButtonState extends State<_StatusButton> {
+class _StatusButtonState extends ConsumerState<_StatusButton> {
   bool _loading = false;
 
   @override
@@ -462,13 +464,25 @@ class _StatusButtonState extends State<_StatusButton> {
       height: 48,
       child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: color),
-        onPressed: _loading
-            ? null
-            : () async {
-                setState(() => _loading = true);
-                await widget.onPressed();
-                if (mounted) setState(() => _loading = false);
-              },
+       onPressed: _loading
+    ? null
+    : () async {
+        setState(() => _loading = true);
+        await widget.onPressed();
+ 
+        // Generar factura automáticamente al iniciar el viaje
+        if (widget.trip.nextStatus == TripStatus.en_curso) {
+          try {
+            await ref
+                .read(invoicesRepoProvider)
+                .generateForTrip(widget.trip.id);
+          } catch (e) {
+            debugPrint('Error generando factura: $e');
+          }
+        }
+ 
+        if (mounted) setState(() => _loading = false);
+      },
         icon: _loading
             ? const SizedBox(
                 width: 18, height: 18,
