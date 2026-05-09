@@ -83,6 +83,12 @@ class MainScaffold extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(title ?? 'LogiFlow'),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         actions: [
           ...?actions,
           PopupMenuButton<String>(
@@ -120,6 +126,92 @@ class MainScaffold extends ConsumerWidget {
         ],
       ),
       body: child,
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: theme.primaryColor,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  const Icon(
+                    Icons.local_shipping,
+                    color: Colors.white,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'LogiFlow',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Gestión logística',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.receipt_long),
+              title: const Text('Facturas'),
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/invoices');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.route),
+              title: const Text('Viajes'),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/trips');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.inventory_2),
+              title: const Text('Contenedores'),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/containers');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.people),
+              title: const Text('Conductores'),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/drivers');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.local_shipping_outlined),
+              title: const Text('Camiones'),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/trucks');
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.dashboard),
+              title: const Text('Dashboard'),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/dashboard');
+              },
+            ),
+          ],
+        ),
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
